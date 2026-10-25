@@ -18,7 +18,7 @@ public class App {
   public static void main(String[] args) {
     System.out.println(new App().getGreeting());
     try {
-      // TODO change this so it just uses the regular windows LNF
+      // TODO change this so it just uses the regular windows LNF for production
       UIManager.setLookAndFeel("com.sun.java.swing.plaf.gtk.GTKLookAndFeel");
     } catch (Exception e) {
       try {
@@ -37,7 +37,32 @@ public class App {
     JButton optionsBtn = new JButton("Options");
 
     // stubs
-    importBtn.addActionListener(e -> System.out.println("Import Schedule clicked"));
+    importBtn.addActionListener(e -> {
+      System.out.println("Import Schedule clicked");
+      javax.swing.JFileChooser fileChooser = new javax.swing.JFileChooser();
+      fileChooser.setDialogTitle("Select Schedule Excel File");
+
+      // Filter for Excel files
+      javax.swing.filechooser.FileNameExtensionFilter filter = new javax.swing.filechooser.FileNameExtensionFilter(
+          "Excel Spreadsheets (*.xls, *.xlsx)", "xls", "xlsx");
+      fileChooser.setFileFilter(filter);
+
+      int userSelection = fileChooser.showOpenDialog(frame);
+      if (userSelection == javax.swing.JFileChooser.APPROVE_OPTION) {
+        java.io.File file = fileChooser.getSelectedFile();
+        try {
+          java.util.List<java.util.List<String>> importedData = ExcelReader.readExcel(file);
+          ScheduleWindow scheduleWindow = new ScheduleWindow(importedData);
+          scheduleWindow.setVisible(true);
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          javax.swing.JOptionPane.showMessageDialog(frame,
+              "Error reading Excel file: " + ex.getMessage(),
+              "Import Error",
+              javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+      }
+    });
     createBtn.addActionListener(e -> {
       System.out.println("Create Schedule clicked");
       ScheduleWindow scheduleWindow = new ScheduleWindow();
