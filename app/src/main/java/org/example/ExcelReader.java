@@ -1,12 +1,46 @@
 package org.example;
 
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ExcelReader {
+
+  public static final String[] COLUMN_HEADERS = { "Subject", "Grade", "Teacher", "Room" };
+
+  public static void createBlankTemplate(File file) throws IOException {
+    try (Workbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Schedule");
+      Row header = sheet.createRow(0);
+      for (int i = 0; i < COLUMN_HEADERS.length; i++) {
+        header.createCell(i).setCellValue(COLUMN_HEADERS[i]);
+        sheet.setColumnWidth(i, 20 * 256);
+      }
+      try (FileOutputStream out = new FileOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+  }
+
+  public static void writeSchedule(File file, List<List<String>> data) throws IOException {
+    try (Workbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Schedule");
+      for (int r = 0; r < data.size(); r++) {
+        Row row = sheet.createRow(r);
+        List<String> rowData = data.get(r);
+        for (int c = 0; c < rowData.size(); c++) {
+          row.createCell(c).setCellValue(rowData.get(c) == null ? "" : rowData.get(c));
+        }
+      }
+      try (FileOutputStream out = new FileOutputStream(file)) {
+        workbook.write(out);
+      }
+    }
+  }
 
   public static List<List<String>> readExcel(File file) throws IOException {
     return readExcelSheet(file, 0);
