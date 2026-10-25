@@ -10,22 +10,6 @@ import java.util.List;
 
 public class ExcelReader {
 
-  public static final String[] COLUMN_HEADERS = { "Subject", "Grade", "Teacher", "Room" };
-
-  public static void createBlankTemplate(File file) throws IOException {
-    try (Workbook workbook = new XSSFWorkbook()) {
-      Sheet sheet = workbook.createSheet("Schedule");
-      Row header = sheet.createRow(0);
-      for (int i = 0; i < COLUMN_HEADERS.length; i++) {
-        header.createCell(i).setCellValue(COLUMN_HEADERS[i]);
-        sheet.setColumnWidth(i, 20 * 256);
-      }
-      try (FileOutputStream out = new FileOutputStream(file)) {
-        workbook.write(out);
-      }
-    }
-  }
-
   public static void writeSchedule(File file, List<List<String>> data) throws IOException {
     try (Workbook workbook = new XSSFWorkbook()) {
       Sheet sheet = workbook.createSheet("Schedule");

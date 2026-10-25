@@ -7,12 +7,22 @@ import java.util.List;
 public abstract class Member {
   private final String name;
   private final List<Subject> courses = new ArrayList<>();
+  private int id = -1;
 
   protected Member(String name) {
     if (name == null) {
       throw new IllegalArgumentException("Member name must not be null");
     }
     this.name = name.trim();
+  }
+
+  /** Database id; -1 until the entity has been loaded from or saved to the DB. */
+  public int getId() {
+    return id;
+  }
+
+  public void setId(int id) {
+    this.id = id;
   }
 
   public String getName() {
@@ -32,10 +42,6 @@ public abstract class Member {
     if (subject != null && !courses.contains(subject)) {
       courses.add(subject);
     }
-  }
-
-  public void removeCourse(Subject subject) {
-    courses.remove(subject);
   }
 
   @Override

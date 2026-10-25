@@ -27,6 +27,11 @@ dependencies {
     // Apache POI for spreadsheet reading
     implementation(libs.poi)
     implementation(libs.poi.ooxml)
+
+    // Embedded MariaDB (MySQL-compatible) server + bundled linux binaries + JDBC client
+    implementation(libs.mariadb4j.core)
+    runtimeOnly(libs.mariadb4j.db.linux64)
+    implementation(libs.mariadb.client)
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

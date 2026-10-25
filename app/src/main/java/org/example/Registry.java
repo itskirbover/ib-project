@@ -5,8 +5,8 @@ import java.util.List;
 
 /**
  * Session-level catalog of subjects, teachers and grade levels that feeds the
- * schedule editor's drop-downs. It is seeded from the loaded schedule and
- * grows as the user adds entries through the "Add subject/teacher..." actions.
+ * editor's drop-downs. On startup it is loaded from the database; the
+ * "Add subject/teacher..." actions write through to the database.
  */
 public final class Registry {
   public static final String ADD_SUBJECT = "+ Add subject...";
@@ -19,24 +19,40 @@ public final class Registry {
   private Registry() {
   }
 
-  public static void register(String subject, String teacher, String grade) {
-    if (subject != null && !subject.isBlank()) {
-      addSubject(subject.trim());
-    }
-    if (teacher != null && !teacher.isBlank()) {
-      addTeacher(teacher.trim());
-    }
-    if (grade != null && !grade.isBlank()) {
-      addUnique(grades, grade.trim());
+  /** Seeds the session lists from the database (safe fallback if DB is down). */
+  public static void load() {
+    try {
+      subjects.clear();
+      for (Subject s : SubjectDao.all()) {
+        subjects.add(s.getName());
+      }
+      teachers.clear();
+      for (Teacher t : TeacherDao.all()) {
+        teachers.add(t.getName());
+      }
+    } catch (Exception e) {
+      System.err.println("Registry load failed: " + e.getMessage());
     }
   }
 
+  /** Adds a subject to the catalog and persists it. */
   public static void addSubject(String name) {
     addUnique(subjects, name);
+    try {
+      SubjectDao.findOrCreate(name);
+    } catch (Exception e) {
+      System.err.println("Subject persist failed: " + e.getMessage());
+    }
   }
 
+  /** Adds a teacher to the catalog and persists it. */
   public static void addTeacher(String name) {
     addUnique(teachers, name);
+    try {
+      TeacherDao.findOrCreate(name);
+    } catch (Exception e) {
+      System.err.println("Teacher persist failed: " + e.getMessage());
+    }
   }
 
   public static List<String> subjectItems() {

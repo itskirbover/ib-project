@@ -5,9 +5,15 @@
 guava = "33.5.0-jre"
 junit-jupiter = "6.0.1"
 poi = "5.3.0"
+mariadb4j = "3.2.0"
+mariadb4j-db = "11.4.5"
+mariadb-client = "3.5.11"
 
 [libraries]
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 poi = { module = "org.apache.poi:poi", version.ref = "poi" }
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
+mariadb4j-core = { module = "ch.vorburger.mariaDB4j:mariaDB4j-core", version.ref = "mariadb4j" }
+mariadb4j-db-linux64 = { module = "ch.vorburger.mariaDB4j:mariaDB4j-db-linux64", version.ref = "mariadb4j-db" }
+mariadb-client = { module = "org.mariadb.jdbc:mariadb-java-client", version.ref = "mariadb-client" }

@@ -1,7 +1,5 @@
 package org.example;
 
-import java.util.Objects;
-
 /**
  * A scheduled class: one lesson of a {@link Subject}, taught by exactly one
  * {@link Teacher}, placed in a timetable slot (period + time) and room.
@@ -61,23 +59,6 @@ public class SchoolClass {
 
   public boolean isEmpty() {
     return subject.getName().isEmpty();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (!(o instanceof SchoolClass other)) {
-      return false;
-    }
-    return subject.equals(other.subject)
-        && teacher.getName().equals(other.teacher.getName())
-        && time.equals(other.time)
-        && grade.equals(other.grade)
-        && room.equals(other.room);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(subject, teacher.getName(), time, grade, room);
   }
 
   @Override
