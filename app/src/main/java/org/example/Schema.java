@@ -1,6 +1,7 @@
 package org.example;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -78,6 +79,19 @@ final class Schema {
             PRIMARY KEY (teacher_id, day, period),
             FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""");
+
+      seedIbSubjects(s);
+    }
+  }
+
+  /** Ensures every IB subject exists in the catalog (INSERT IGNORE is idempotent). */
+  private static void seedIbSubjects(Statement s) throws SQLException {
+    for (String name : IbSubjects.ALL) {
+      try (PreparedStatement ps = s.getConnection().prepareStatement(
+          "INSERT IGNORE INTO subjects(name) VALUES (?)")) {
+        ps.setString(1, name);
+        ps.executeUpdate();
+      }
     }
   }
 

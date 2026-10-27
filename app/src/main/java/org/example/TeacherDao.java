@@ -61,6 +61,16 @@ public final class TeacherDao {
     }
   }
 
+  /** Deletes a teacher; their classes are first reassigned to "(No teacher)". */
+  public static void delete(Teacher teacher) throws SQLException {
+    TimetableDao.reassignToPlaceholder(teacher);
+    try (Connection c = Database.open();
+        PreparedStatement ps = c.prepareStatement("DELETE FROM teachers WHERE id = ?")) {
+      ps.setInt(1, teacher.getId());
+      ps.executeUpdate();
+    }
+  }
+
   /** Inserts or updates the teacher plus their subject links and no-time slots. */
   public static void upsert(Teacher teacher, List<Subject> subjects, List<int[]> blocks)
       throws SQLException {

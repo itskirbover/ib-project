@@ -15,7 +15,7 @@ public class SubjectCalendarView extends JPanel {
     host.setOpaque(false);
     List<Slot> slots = Views.slotsOfSubject(subjectName);
     CalendarGrid grid = new CalendarGrid(slots, List.of(), Views.conflicts,
-        (day, period, inCell, src) -> {
+        (day, period, inCell, src, rightClick) -> {
           if (!inCell.isEmpty()) {
             Slot slot = inCell.get(0);
             Views.shell.showCard("Class — " + slot.subject(), () -> ClassView.create(slot.id()));

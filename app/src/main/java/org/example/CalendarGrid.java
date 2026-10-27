@@ -33,7 +33,7 @@ public class CalendarGrid extends JPanel {
   private final transient CellClick onCellClick;
 
   public interface CellClick {
-    void on(int day, int period, List<Slot> slotsInCell, java.awt.Component source);
+    void on(int day, int period, List<Slot> slotsInCell, java.awt.Component source, boolean rightClick);
   }
 
   public CalendarGrid(List<Slot> slots, List<int[]> noTime, Map<Integer, List<String>> conflicts,
@@ -108,7 +108,8 @@ public class CalendarGrid extends JPanel {
       addMouseListener(new java.awt.event.MouseAdapter() {
         @Override
         public void mousePressed(java.awt.event.MouseEvent e) {
-          onCellClick.on(day, period, cellSlots(day, period), Cell.this);
+          onCellClick.on(day, period, cellSlots(day, period), Cell.this,
+              javax.swing.SwingUtilities.isRightMouseButton(e));
         }
       });
       buildContent();
@@ -124,30 +125,92 @@ public class CalendarGrid extends JPanel {
       List<Slot> inCell = cellSlots(day, period);
       if (cellIsNoTime() && inCell.isEmpty()) {
         add(Box.createVerticalGlue());
-        add(centeredLabel("No-time", 10, palette[2], Font.PLAIN));
+        add(centeredLabel("Unavailable", 10, palette[2], Font.PLAIN));
         add(Box.createVerticalGlue());
         return;
       }
       if (inCell.isEmpty()) {
         return;
       }
-      add(centeredLabel(Palette.periodTime(period), 9, palette[3], Font.PLAIN));
-      add(Box.createVerticalStrut(3));
-      for (Slot slot : inCell) {
+
+      // Multi-class slots: keep the cell compact — one subject + teacher line per
+      // class, a Conflict chip when it clashes; details live in the tooltip.
+      boolean multi = inCell.size() > 1;
+      StringBuilder tooltip = new StringBuilder();
+      if (!multi) {
+        add(centeredLabel(Palette.periodTime(period), 9, palette[3], Font.PLAIN));
+        add(Box.createVerticalStrut(3));
+        Slot slot = inCell.get(0);
         boolean conflict = conflicts.containsKey(slot.id());
-      add(centeredLabel(slot.subject(), 12, conflict ? Palette.conflictText(bg) : palette[0], Font.BOLD));
-      add(centeredLabel(slot.teacher(), 10, palette[1], Font.PLAIN));
-      add(centeredLabel(slot.grade(), 10, palette[2], Font.PLAIN));
-      add(centeredLabel(slot.room(), 10, palette[3], Font.PLAIN));
-      if (conflict) {
-        List<String> reasons = conflicts.get(slot.id());
-        add(centeredLabel(reasons.isEmpty() ? "Conflict" : reasons.get(0), 9, Palette.conflictText(bg),
-            Font.PLAIN));
-      }
-        if (inCell.size() > 1 || conflicts.containsKey(slot.id())) {
+        add(centeredLabel(slot.subject(), 12, conflict ? Palette.conflictText(bg) : palette[0], Font.BOLD));
+        if (!slot.teacher().isEmpty()) {
+          add(centeredLabel(slot.teacher(), 10, palette[1], Font.PLAIN));
+        }
+        if (!slot.grade().isEmpty()) {
+          add(centeredLabel(slot.grade(), 10, palette[2], Font.PLAIN));
+        }
+        if (!slot.room().isEmpty()) {
+          add(centeredLabel(slot.room(), 10, palette[3], Font.PLAIN));
+        }
+        if (conflict) {
           add(Box.createVerticalStrut(2));
+          add(centeredLabel(conflictLine(slot), 9, Palette.conflictText(bg), Font.PLAIN));
+        }
+        tooltip.append(tooltipLine(slot));
+      } else {
+        boolean anyConflict = false;
+        for (Slot slot : inCell) {
+          boolean conflict = conflicts.containsKey(slot.id());
+          anyConflict |= conflict;
+          add(centeredLabel(slot.subject(), 11, conflict ? Palette.conflictText(bg) : palette[0], Font.BOLD));
+          if (!slot.teacher().isEmpty()) {
+            add(centeredLabel(slot.teacher(), 9, palette[1], Font.PLAIN));
+          }
+          if (conflict) {
+            add(centeredLabel("Conflict", 9, Palette.conflictText(bg), Font.BOLD));
+          }
+          add(Box.createVerticalStrut(2));
+          if (tooltip.length() > 0) {
+            tooltip.append("\n\n");
+          }
+          tooltip.append(tooltipLine(slot));
+        }
+        if (anyConflict) {
+          add(Box.createVerticalStrut(1));
+          tooltip.append("\n");
         }
       }
+      setToolTipText(tooltip.toString());
+    }
+
+    private String conflictLine(Slot slot) {
+      List<String> reasons = conflicts.get(slot.id());
+      if (reasons == null || reasons.isEmpty()) {
+        return "Conflict";
+      }
+      String reason = reasons.get(0);
+      return reason.length() > 34 ? "Conflict" : reason;
+    }
+
+    private String tooltipLine(Slot slot) {
+      StringBuilder line = new StringBuilder(slot.subject());
+      if (!slot.teacher().isEmpty()) {
+        line.append(" · ").append(slot.teacher());
+      }
+      if (!slot.grade().isEmpty()) {
+        line.append(" · ").append(slot.grade());
+      }
+      if (!slot.room().isEmpty()) {
+        line.append(" · ").append(slot.room());
+      }
+      line.append("\n").append(Palette.dayNames()[slot.day()]).append(", ").append(Palette.periodTime(slot.period()));
+      List<String> reasons = conflicts.get(slot.id());
+      if (reasons != null) {
+        for (String reason : reasons) {
+          line.append("\nConflict: ").append(reason);
+        }
+      }
+      return line.toString();
     }
 
     private javax.swing.JLabel centeredLabel(String text, int size, Color color, int style) {

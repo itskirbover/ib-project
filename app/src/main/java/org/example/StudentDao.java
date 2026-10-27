@@ -26,6 +26,15 @@ public final class StudentDao {
     return list;
   }
 
+  /** Deletes a student (their course links cascade). */
+  public static void delete(Student student) throws SQLException {
+    try (Connection c = Database.open();
+        PreparedStatement ps = c.prepareStatement("DELETE FROM students WHERE id = ?")) {
+      ps.setInt(1, student.getId());
+      ps.executeUpdate();
+    }
+  }
+
   /** Inserts or updates the student and replaces their course links in one transaction. */
   public static void upsert(Student student, List<Subject> subjects) throws SQLException {
     try (Connection c = Database.open()) {

@@ -29,6 +29,14 @@ class DaoTest {
   }
 
   @Test
+  void ibCatalogSeeded() throws Exception {
+    List<Subject> all = SubjectDao.all();
+    assertTrue(all.size() >= IbSubjects.ALL.size());
+    assertTrue(all.stream().anyMatch(s -> s.getName().equals("Mathematics: Analysis and Approaches")));
+    assertTrue(all.stream().anyMatch(s -> s.getName().equals("English A: Literature")));
+  }
+
+  @Test
   void subjectFindOrCreateIsIdempotent() throws Exception {
     Subject first = SubjectDao.findOrCreate("Dao Subject A");
     Subject second = SubjectDao.findOrCreate("Dao Subject A");
@@ -74,7 +82,13 @@ class DaoTest {
     Teacher t2 = TeacherDao.findOrCreate("Dao Teacher C");
     Slot b = TimetableDao.save(0, 1, new SchoolClass(biology, t1));
     Slot s = TimetableDao.save(0, 1, new SchoolClass(spanish, t2));
-    assertEquals(2, TimetableDao.slots(null).stream().filter(x -> x.day() == 0 && x.period() == 1).count());
+    assertEquals(2, TimetableDao.slots(null).stream()
+        .filter(x -> (x.day() == 0 && x.period() == 1) && x.subject().startsWith("Dao"))
+        .count(),
+        "unexpected rows: " + TimetableDao.slots(null).stream()
+            .filter(x -> x.day() == 0 && x.period() == 1)
+            .map(x -> x.id() + ":" + x.subject() + "/" + x.teacher() + "/" + x.grade() + "/" + x.room())
+            .toList());
     Student student = new Student("Dao Student B", "Grade 11");
     student.addCourse(biology);
     student.addCourse(spanish);
@@ -97,5 +111,18 @@ class DaoTest {
     Student loaded = all.stream().filter(st -> st.getName().equals("Dao Student A")).findFirst().orElseThrow();
     assertEquals("Grade 11", loaded.getGrade());
     assertEquals(2, loaded.getCourses().size());
+  }
+
+  @Test
+  void deletingTeacherReassignsClassesToPlaceholder() throws Exception {
+    Subject subject = SubjectDao.findOrCreate("Dao Subject E");
+    Teacher teacher = TeacherDao.findOrCreate("Dao Teacher D");
+    TimetableDao.save(1, 2, new SchoolClass(subject, teacher));
+    TimetableDao.reassignToPlaceholder(teacher);
+    TeacherDao.delete(teacher);
+    List<Slot> after = TimetableDao.slots(null);
+    assertTrue(after.stream().noneMatch(s -> s.subject().equals("Dao Subject E")
+        && !s.teacher().equals(TimetableDao.UNASSIGNED)));
+    assertTrue(TeacherDao.all().stream().noneMatch(t -> t.getName().equals("Dao Teacher D")));
   }
 }

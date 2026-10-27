@@ -13,6 +13,9 @@ import java.util.List;
  */
 public final class TimetableDao {
 
+  /** Placeholder for classes whose teacher is not set yet. */
+  public static final String UNASSIGNED = "(No teacher)";
+
   /** All occupied classes, optionally filtered by one subject's name (null = all). */
   public static List<Slot> slots(String subjectName) throws SQLException {
     List<Slot> list = new ArrayList<>();
@@ -44,16 +47,29 @@ public final class TimetableDao {
   }
 
   /**
-   * Puts a class into a slot: any existing class of the same subject at the same
-   * (day, period) is replaced; other classes in that slot are left alone.
+   * Puts a class into a slot. A blank teacher name stores the class under the
+   * "(No teacher)" placeholder until a teacher claims the subject. A previous
+   * identical class in that slot is replaced; other parallel classes stay.
    */
   public static Slot save(int day, int period, SchoolClass klass) throws SQLException {
     if (klass == null || klass.isEmpty()) {
       throw new IllegalArgumentException("Cannot save an empty class");
     }
+    String teacherName = klass.getTeacher().getName();
+    if (teacherName == null || teacherName.isBlank()) {
+      teacherName = UNASSIGNED;
+    }
     try (Connection c = Database.open()) {
       Subject subject = SubjectDao.findOrCreate(klass.getSubject().getName());
-      Teacher teacher = TeacherDao.findOrCreate(klass.getTeacher().getName());
+      Teacher teacher = TeacherDao.findOrCreate(teacherName);
+      try (PreparedStatement ps = c.prepareStatement(
+          "DELETE FROM timetable_slots WHERE day = ? AND period = ? AND subject_id = ? AND teacher_id = ?")) {
+        ps.setInt(1, day);
+        ps.setInt(2, period);
+        ps.setInt(3, subject.getId());
+        ps.setInt(4, teacher.getId());
+        ps.executeUpdate();
+      }
       int id;
       try (PreparedStatement ps = c.prepareStatement(
           "INSERT INTO timetable_slots(day, period, subject_id, teacher_id, grade, room) VALUES (?, ?, ?, ?, ?, ?)",
@@ -106,6 +122,36 @@ public final class TimetableDao {
       ps.setInt(1, day);
       ps.setInt(2, period);
       ps.setString(3, subjectName);
+      ps.executeUpdate();
+    }
+  }
+
+  /** Moves every class currently assigned to a teacher to the "(No teacher)" placeholder. */
+  public static void reassignToPlaceholder(Teacher teacher) throws SQLException {
+    try (Connection c = Database.open();
+        PreparedStatement ps = c.prepareStatement(
+            "UPDATE timetable_slots SET teacher_id = ? WHERE teacher_id = ?")) {
+      ps.setInt(1, TeacherDao.findOrCreate(UNASSIGNED).getId());
+      ps.setInt(2, teacher.getId());
+      ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Auto-assignment: moves every "(No teacher)" slot of a subject to a teacher
+   * who just started teaching that subject.
+   */
+  public static void reassignUnassigned(String subjectName, Teacher teacher) throws SQLException {
+    try (Connection c = Database.open();
+        PreparedStatement ps = c.prepareStatement("""
+            UPDATE timetable_slots s
+            JOIN subjects su ON su.id = s.subject_id
+            JOIN teachers ph ON ph.id = s.teacher_id
+            SET s.teacher_id = ?
+            WHERE su.name = ? AND ph.name = ?""")) {
+      ps.setInt(1, teacher.getId());
+      ps.setString(2, subjectName);
+      ps.setString(3, UNASSIGNED);
       ps.executeUpdate();
     }
   }
