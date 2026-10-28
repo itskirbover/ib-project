@@ -9,7 +9,8 @@ import java.sql.Statement;
 /** DDL for the schedule database; safe to run on every startup. */
 final class Schema {
   static void initialize(Connection c) throws SQLException {
-    // Migration: pre-multi-class timetable_slots had PK(day, period); drop it in favor
+    // Migration: pre-multi-class timetable_slots had PK(day, period); drop it in
+    // favor
     // of one row per class so parallel classes in one slot are representable.
     try (Statement chk = c.createStatement();
         ResultSet hasId = chk.executeQuery("""
@@ -84,9 +85,11 @@ final class Schema {
     }
   }
 
-  /** Ensures every IB subject exists in the catalog (INSERT IGNORE is idempotent). */
+  /**
+   * Ensures every IB subject exists in the catalog (INSERT IGNORE is idempotent).
+   */
   private static void seedIbSubjects(Statement s) throws SQLException {
-    for (String name : IbSubjects.ALL) {
+    for (String name : IBSubjects.ALL) {
       try (PreparedStatement ps = s.getConnection().prepareStatement(
           "INSERT IGNORE INTO subjects(name) VALUES (?)")) {
         ps.setString(1, name);

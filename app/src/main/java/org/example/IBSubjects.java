@@ -2,8 +2,11 @@ package org.example;
 
 import java.util.List;
 
-/** The full IB Diploma Programme subject catalog (groups 1-6), seeded on first run. */
-public final class IbSubjects {
+/**
+ * The full IB Diploma Programme subject catalog (groups 1-6), seeded on first
+ * run.
+ */
+public final class IBSubjects {
   public static final List<String> ALL = List.of(
       // Group 1: Studies in language and literature
       "English A: Literature",
@@ -47,6 +50,6 @@ public final class IbSubjects {
       "Film",
       "Dance");
 
-  private IbSubjects() {
+  private IBSubjects() {
   }
 }
