@@ -156,6 +156,10 @@ public final class Palette {
     JOptionPane.showMessageDialog(parent, message, title, JOptionPane.WARNING_MESSAGE);
   }
 
+  public static void info(Component parent, String message, String title) {
+    JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
+  }
+
   /** Left-hand period number drawn inside a circle. */
   public static JPanel periodBadge(int number) {
     JPanel badge = new JPanel() {

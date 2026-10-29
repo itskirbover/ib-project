@@ -37,7 +37,7 @@ public class TimetableView extends JPanel {
   private static void cellClicked(int day, int period, List<Slot> inCell, Component source,
       boolean rightClick) {
     if (!inCell.isEmpty() && !rightClick) {
-      Views.shell.showCard("Class — " + inCell.get(0).subject(), () -> ClassView.create(inCell.get(0).id()));
+      ClassView.openCell(day, period);
       return;
     }
     if (rightClick) {
@@ -52,8 +52,7 @@ public class TimetableView extends JPanel {
     JPopupMenu menu = new JPopupMenu();
     for (Slot slot : inCell) {
       JMenuItem open = new JMenuItem(slot.subject() + " (" + slot.teacher() + ") — details");
-      open.addActionListener(e -> Views.shell.showCard("Class — " + slot.subject(),
-          () -> ClassView.create(slot.id())));
+      open.addActionListener(e -> ClassView.openCell(slot.day(), slot.period()));
       menu.add(open);
     }
     if (!inCell.isEmpty()) {
@@ -87,6 +86,13 @@ public class TimetableView extends JPanel {
     AaCombo.attachAddListener(subjectBox, AaCombo.CatalogKind.SUBJECT);
     AaCombo.attachAddListener(teacherBox, AaCombo.CatalogKind.TEACHER);
 
+    // Day/period default to the clicked cell, but can be changed or suggested.
+    JComboBox<String> dayBox = AaCombo.comboBox(List.of(Palette.dayNames()),
+        Palette.dayNames()[day]);
+    JComboBox<String> periodBox = ClassView.periodBox(period);
+    panel.add(ClassView.timeRow(dayBox, periodBox, () -> ClassView.suggestFreeTime(dayBox,
+        periodBox, AaCombo.boxValue(subjectBox), AaCombo.boxValue(teacherBox), 0, source)));
+
     panel.add(AaCombo.labeled(subjectBox, "Subject"));
     panel.add(AaCombo.labeled(gradeBox, "Grade"));
     panel.add(AaCombo.labeled(teacherBox, "Teacher"));
@@ -106,11 +112,18 @@ public class TimetableView extends JPanel {
           JOptionPane.WARNING_MESSAGE);
       return;
     }
+    int pickedDay = dayBox.getSelectedIndex();
+    int pickedPeriod = periodBox.getSelectedIndex();
+    if (pickedDay < 0 || pickedPeriod < 0) {
+      JOptionPane.showMessageDialog(top, "Day and Period are required.", "Missing data",
+          JOptionPane.WARNING_MESSAGE);
+      return;
+    }
     try {
       SchoolClass klass = new SchoolClass(new Subject(subject), new Teacher(teacher));
       klass.setGrade(AaCombo.boxValue(gradeBox));
       klass.setRoom(roomField.getText().trim());
-      TimetableDao.save(day, period, klass);
+      TimetableDao.save(pickedDay, pickedPeriod, klass);
     } catch (Exception ex) {
       JOptionPane.showMessageDialog(top, "Failed to save class: " + ex.getMessage(), "Save Error",
           JOptionPane.ERROR_MESSAGE);

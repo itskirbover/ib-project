@@ -91,6 +91,53 @@ public final class TimetableDao {
     }
   }
 
+  /**
+   * Moves one class to another (day, period). An identical (subject + teacher)
+   * class already sitting there is replaced, mirroring save(). Throws if the
+   * row vanished or the update violates the schema CHECK constraints.
+   */
+  public static void move(int slotId, int day, int period) throws SQLException {
+    try (Connection c = Database.open()) {
+      c.setAutoCommit(false);
+      try {
+        int[] ids;
+        try (PreparedStatement ps = c.prepareStatement(
+            "SELECT subject_id, teacher_id FROM timetable_slots WHERE id = ?")) {
+          ps.setInt(1, slotId);
+          try (ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+              throw new SQLException("Class no longer exists");
+            }
+            ids = new int[] { rs.getInt(1), rs.getInt(2) };
+          }
+        }
+        try (PreparedStatement ps = c.prepareStatement("""
+            DELETE FROM timetable_slots WHERE day = ? AND period = ?
+              AND subject_id = ? AND teacher_id = ? AND id <> ?""")) {
+          ps.setInt(1, day);
+          ps.setInt(2, period);
+          ps.setInt(3, ids[0]);
+          ps.setInt(4, ids[1]);
+          ps.setInt(5, slotId);
+          ps.executeUpdate();
+        }
+        try (PreparedStatement ps = c.prepareStatement(
+            "UPDATE timetable_slots SET day = ?, period = ? WHERE id = ?")) {
+          ps.setInt(1, day);
+          ps.setInt(2, period);
+          ps.setInt(3, slotId);
+          ps.executeUpdate();
+        }
+        c.commit();
+      } catch (SQLException e) {
+        c.rollback();
+        throw e;
+      } finally {
+        c.setAutoCommit(true);
+      }
+    }
+  }
+
   /** Replaces grade and room fields of one class row. */
   public static void updateDetails(Slot slot, String grade, String room) throws SQLException {
     try (Connection c = Database.open();

@@ -31,7 +31,7 @@ class DaoTest {
   @Test
   void ibCatalogSeeded() throws Exception {
     List<Subject> all = SubjectDao.all();
-    assertTrue(all.size() >= IbSubjects.ALL.size());
+    assertTrue(all.size() >= IBSubjects.ALL.size());
     assertTrue(all.stream().anyMatch(s -> s.getName().equals("Mathematics: Analysis and Approaches")));
     assertTrue(all.stream().anyMatch(s -> s.getName().equals("English A: Literature")));
   }

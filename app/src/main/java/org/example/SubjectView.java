@@ -277,7 +277,7 @@ public class SubjectView extends JPanel {
     row.addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed(MouseEvent e) {
-        Views.shell.showCard("Class — " + slot.subject(), () -> ClassView.create(slot.id()));
+        ClassView.open(slot);
       }
     });
     return row;

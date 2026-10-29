@@ -72,8 +72,7 @@ public class MemberCalendarView extends JPanel {
       return;
     }
     if (!inCell.isEmpty()) {
-      Slot slot = inCell.get(0);
-      Views.shell.showCard("Class — " + slot.subject(), () -> ClassView.create(slot.id()));
+      ClassView.open(inCell.get(0));
       return;
     }
     if (teacher != null) {
@@ -98,8 +97,7 @@ public class MemberCalendarView extends JPanel {
     }
     for (Slot slot : inCell) {
       JMenuItem open = new JMenuItem(slot.subject() + " (" + slot.teacher() + ") — details");
-      open.addActionListener(e -> Views.shell.showCard("Class — " + slot.subject(),
-          () -> ClassView.create(slot.id())));
+      open.addActionListener(e -> ClassView.open(slot));
       menu.add(open);
     }
     if (!inCell.isEmpty()) {
