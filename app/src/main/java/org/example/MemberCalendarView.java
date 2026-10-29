@@ -100,6 +100,11 @@ public class MemberCalendarView extends JPanel {
       open.addActionListener(e -> ClassView.open(slot));
       menu.add(open);
     }
+    if (TimetableView.cellHasConflicts(inCell)) {
+      JMenuItem solve = new JMenuItem("Solve conflicts");
+      solve.addActionListener(e -> TimetableView.solveConflicts(day, period, source));
+      menu.add(solve);
+    }
     if (!inCell.isEmpty()) {
       menu.addSeparator();
     }

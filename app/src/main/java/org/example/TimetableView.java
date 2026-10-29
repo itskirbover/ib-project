@@ -47,6 +47,45 @@ public class TimetableView extends JPanel {
     addClass(day, period, source);
   }
 
+  static boolean cellHasConflicts(List<Slot> inCell) {
+    for (Slot slot : inCell) {
+      List<String> reasons = Views.conflicts.get(slot.id());
+      if (reasons != null && !reasons.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Relocates every conflicted class of the cell to its first conflict-free
+   * time and reports the outcome; classes with no free placement are listed
+   * so they can be handled via Edit details.
+   */
+  static void solveConflicts(int day, int period, Component source) {
+    Component top = source == null ? null : SwingUtilities.getRoot(source);
+    int moved;
+    try {
+      moved = ConflictSolver.solveCell(day, period);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      Palette.error(top, "Failed to solve conflicts: " + ex.getMessage(), "Error");
+      return;
+    }
+    Views.refresh();
+    List<Slot> unresolved = ConflictSolver.stillConflicted(day, period);
+    if (unresolved.isEmpty()) {
+      Palette.info(top, moved == 0 ? "This slot has no conflicts."
+          : "Conflicts solved: " + moved + " class" + (moved == 1 ? "" : "es")
+              + " moved to a conflict-free slot.", "Solve conflicts");
+      return;
+    }
+    String names = unresolved.stream().map(Slot::subject).distinct().reduce((a, b) -> a + ", " + b)
+        .orElse("");
+    Palette.warn(top, "Moved " + moved + " class(es). No conflict-free time exists for "
+        + names + " — resolve via Edit details...", "Conflicts remain");
+  }
+
   /** Right-click menu: open each class, add another parallel class, remove classes. */
   private static JPopupMenu cellMenu(int day, int period, List<Slot> inCell, Component source) {
     JPopupMenu menu = new JPopupMenu();
@@ -54,6 +93,11 @@ public class TimetableView extends JPanel {
       JMenuItem open = new JMenuItem(slot.subject() + " (" + slot.teacher() + ") — details");
       open.addActionListener(e -> ClassView.openCell(slot.day(), slot.period()));
       menu.add(open);
+    }
+    if (cellHasConflicts(inCell)) {
+      JMenuItem solve = new JMenuItem("Solve conflicts");
+      solve.addActionListener(e -> solveConflicts(day, period, source));
+      menu.add(solve);
     }
     if (!inCell.isEmpty()) {
       menu.addSeparator();
