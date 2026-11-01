@@ -34,8 +34,10 @@ public class ClassView extends JPanel {
 
   /** Convenience: opens the slot view for one (day, period) cell. */
   public static void openCell(int day, int period) {
+    int start = TimetableDao.sessionStart(period);
     Views.shell.showCard(
-        "Slot — " + Palette.dayNames()[day] + " · " + Palette.periodTime(period),
+        "Slot — " + Palette.dayNames()[day] + " · " + Palette.sessionLabel(start)
+            + " (" + Palette.periodTime(start) + ")",
         () -> createAt(day, period));
   }
 
@@ -59,7 +61,9 @@ public class ClassView extends JPanel {
     card.setOpaque(false);
     card.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
 
-    card.add(Palette.label("Slot " + Palette.dayNames()[day] + " · " + Palette.periodTime(period),
+    card.add(Palette.label("Slot " + Palette.dayNames()[day] + " · "
+            + Palette.sessionLabel(TimetableDao.sessionStart(period))
+            + " (" + Palette.periodTime(TimetableDao.sessionStart(period)) + ")",
         13, texts[1], Font.BOLD));
     card.add(Box.createVerticalStrut(10));
 
@@ -182,10 +186,11 @@ public class ClassView extends JPanel {
       return;
     }
     int day = dayBox.getSelectedIndex();
-    int period = periodBox.getSelectedIndex();
+    int period = Palette.SESSION_STARTS[Math.max(0, periodBox.getSelectedIndex())];
+    int previous = TimetableDao.sessionStart(slot.period());
     try {
       TimetableDao.updateDetails(slot, AaCombo.boxValue(gradeBox), roomField.getText().trim());
-      if (day >= 0 && period >= 0 && (day != slot.day() || period != slot.period())) {
+      if (day >= 0 && (day != slot.day() || period != previous)) {
         TimetableDao.move(slot.id(), day, period);
       }
     } catch (Exception ex) {
@@ -218,7 +223,7 @@ public class ClassView extends JPanel {
 
   /* ---- shared helpers ---- */
 
-  /** Day + period row for forms, with a button suggesting a conflict-free time. */
+  /** Day + session row for forms, with a button suggesting a conflict-free session. */
   static JComponent timeRow(JComboBox<String> dayBox, JComboBox<String> periodBox,
       Runnable onSuggest) {
     JPanel row = new JPanel(new BorderLayout(8, 0));
@@ -226,7 +231,7 @@ public class ClassView extends JPanel {
     JPanel combos = new JPanel(new BorderLayout(8, 0));
     combos.setOpaque(false);
     combos.add(AaCombo.labeled(dayBox, "Day"), BorderLayout.WEST);
-    combos.add(AaCombo.labeled(periodBox, "Period"), BorderLayout.CENTER);
+    combos.add(AaCombo.labeled(periodBox, "Session"), BorderLayout.CENTER);
     row.add(combos, BorderLayout.CENTER);
     JButton suggest = new JButton("Suggest free time");
     suggest.addActionListener(e -> onSuggest.run());
@@ -238,33 +243,32 @@ public class ClassView extends JPanel {
     return wrap;
   }
 
+  /** Session picker listing the four dual sessions (Periods 1-2, 3-4, 5-6, 7-8). */
   static JComboBox<String> periodBox(int initialPeriod) {
-    String[] times = new String[Palette.PERIODS];
-    for (int i = 0; i < Palette.PERIODS; i++) {
-      times[i] = Palette.periodTime(i);
+    JComboBox<String> box = AaCombo.comboBox(List.of(Palette.SESSION_LABELS), "");
+    if (initialPeriod >= 0) {
+      box.setSelectedItem(Palette.sessionLabel(TimetableDao.sessionStart(initialPeriod)));
     }
-    JComboBox<String> box = AaCombo.comboBox(List.of(times),
-        initialPeriod >= 0 ? Palette.periodTime(initialPeriod) : "");
     return box;
   }
 
-  /** Fills the day/period boxes with the first conflict-free slot, if any. */
+  /** Fills the day/session boxes with the first conflict-free dual session, if any. */
   static void suggestFreeTime(JComboBox<String> dayBox, JComboBox<String> periodBox,
       String subject, String teacher, int excludeSlotId, Component top) {
     if (subject.isBlank() || teacher.isBlank()) {
       Palette.warn(top, "Pick a subject and a teacher first.", "Nothing to suggest");
       return;
     }
-    List<int[]> free = TimeSuggester.findFreeSlots(subject, teacher,
+    List<int[]> free = TimeSuggester.findFreeSessions(subject, teacher,
         Views.slots, Views.students, Views.teachers, excludeSlotId);
     if (free.isEmpty()) {
-      Palette.warn(top, "No conflict-free slot exists for " + subject + " with " + teacher + ".",
+      Palette.warn(top, "No conflict-free session exists for " + subject + " with " + teacher + ".",
           "No free slot");
       return;
     }
     int[] pick = free.get(0);
     dayBox.setSelectedIndex(pick[0]);
-    periodBox.setSelectedItem(Palette.periodTime(pick[1]));
+    periodBox.setSelectedItem(Palette.sessionLabel(pick[1]));
     if (free.size() > 1) {
       showSuggestionNote(top, pick, free.size());
     }
@@ -272,15 +276,15 @@ public class ClassView extends JPanel {
 
   private static void showSuggestionNote(Component top, int[] pick, int count) {
     Palette.info(top, "Suggested " + Palette.dayNames()[pick[0]] + " · "
-        + Palette.periodTime(pick[1]) + " — the first of " + count
-        + " conflict-free slots for this class.", "Slot suggestion");
+        + Palette.sessionLabel(pick[1]) + " — the first of " + count
+        + " conflict-free sessions for this class.", "Slot suggestion");
   }
 
   private static String moveFailureMessage(Exception ex) {
     if (ex instanceof java.sql.SQLException sql
         && sql.getSQLState() != null
         && sql.getSQLState().startsWith("23")) {
-      return "That cell already contains this class (same subject and teacher).";
+      return "That session already contains this class (same subject and teacher).";
     }
     return "Failed to update: " + ex.getMessage();
   }

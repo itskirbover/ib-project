@@ -11,12 +11,15 @@ Written in Java as an IB Computer Science internal assessment solution (see `cri
 - Automatic timetable generation without class clashes
 - Visualizer mode for interactively editing generated timetables
 - Dynamic highlighting of clashes and scheduling issues
-- Excel import/export via Apache POI
+- Excel (.xlsx) import/export (hand-rolled with the JDK's zip + XML support)
 
 ## Requirements
 
 - JDK 21 (the Gradle toolchain can download one automatically via the foojay resolver)
-- Linux (the embedded MariaDB binaries bundled are `linux64`)
+- Linux (the embedded MariaDB binaries bundled are `linux64`) using the default
+  baseline system libraries only: glibc, gcc-libs, libxcrypt and systemd-libs,
+  which ship with every mainstream desktop distribution. No other packages
+  (MariaDB, spreadsheet libraries, etc.) need to be installed.
 
 ## Building and running
 
@@ -48,5 +51,5 @@ app/src/main/java/org/example/
 - Java 21, Swing (custom AWT-based UI components)
 - Gradle 9 (Kotlin DSL) with the `application` plugin
 - MariaDB4j (embedded MariaDB server) + MariaDB JDBC client
-- Apache POI for spreadsheet I/O
+- Pure-JDK xlsx reader/writer (`Xlsx.java`, used by `ExcelReader`/`ExcelWriter`)
 - JUnit Jupiter for testing

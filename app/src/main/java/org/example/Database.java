@@ -40,7 +40,16 @@ public final class Database {
         .setDeletingTemporaryBaseAndDataDirsOnShutdown(false)
         .setSecurityDisabled(true);
     server = DB.newEmbeddedDB(config.build());
-    server.start();
+    try {
+      server.start();
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "The embedded database failed to start. Its bundled binaries only need"
+              + " the standard Linux system libraries (glibc, gcc-libs, libxcrypt,"
+              + " systemd-libs) - nothing else must be installed. Original error: "
+              + e.getMessage(),
+          e);
+    }
     server.createDB(DB_NAME);
     started = true;
     try (Connection c = open()) {

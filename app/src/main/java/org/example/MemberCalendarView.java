@@ -157,7 +157,7 @@ public class MemberCalendarView extends JPanel {
     JPanel panel = form(subjectBox, gradeBox, roomField,
         Palette.label("Their class will be taught by " + teacher.getName(), 11, null, java.awt.Font.PLAIN));
     Component top = parent(source);
-    if (!confirm(top, panel, "Add class — " + Palette.periodTime(period))) {
+    if (!confirm(top, panel, "Add class — " + Palette.sessionLabel(TimetableDao.sessionStart(period)))) {
       return;
     }
     String subject = AaCombo.boxValue(subjectBox);
@@ -187,7 +187,7 @@ public class MemberCalendarView extends JPanel {
 
     JPanel panel = form2(subjectBox, gradeBox, roomField, teacherPart);
     Component top = parent(source);
-    if (!confirm(top, panel, "Add class — " + Palette.periodTime(period))) {
+    if (!confirm(top, panel, "Add class — " + Palette.sessionLabel(TimetableDao.sessionStart(period)))) {
       return;
     }
     String subject = AaCombo.boxValue(subjectBox);

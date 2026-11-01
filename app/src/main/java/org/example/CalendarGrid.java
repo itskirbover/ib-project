@@ -137,6 +137,11 @@ public class CalendarGrid extends JPanel {
       // class, a Conflict chip when it clashes; details live in the tooltip.
       boolean multi = inCell.size() > 1;
       StringBuilder tooltip = new StringBuilder();
+      if (period % 2 == 1) {
+        // Both halves show identical session data; the second marks the pairing.
+        add(centeredLabel("▲ continues from period " + period, 9, palette[3], Font.PLAIN));
+        add(Box.createVerticalStrut(3));
+      }
       if (!multi) {
         add(centeredLabel(Palette.periodTime(period), 9, palette[3], Font.PLAIN));
         add(Box.createVerticalStrut(3));

@@ -45,14 +45,18 @@ class ConflictSolverTest {
 
   @Test
   void movingOneClashingClassResolvesBoth() throws Exception {
-    List<String> subjects = SubjectDao.all().stream().map(Subject::getName).toList();
-    assertTrue(subjects.size() >= 2);
-    String subjectA = subjects.get(0);
-    String subjectB = subjects.get(1);
+    // SL subjects need 2 sessions each per week — set both up to satisfy the rule.
+    List<String> slSubjects = SubjectDao.all().stream().map(Subject::getName)
+        .filter(n -> n.endsWith(" SL")).toList();
+    assertTrue(slSubjects.size() >= 2);
+    String subjectA = slSubjects.get(0);
+    String subjectB = slSubjects.get(1);
     TeacherDao.findOrCreate("Solver Alpha");
     TeacherDao.findOrCreate("Solver Beta");
     Slot slotA = save(0, subjectA, "Solver Alpha");
-    Slot slotB = save(0, subjectB, "Solver Beta");
+    save(2, subjectA, "Solver Alpha");
+    Slot slotB = save(0, subjectB, "Solver Beta"); // same cell as slotA: student clash
+    TimetableDao.save(1, 2, new SchoolClass(new Subject(subjectB), new Teacher("Solver Beta")));
     Student student = new Student("Solver Ana", "Grade 11");
     StudentDao.upsert(student, List.of(
         SubjectDao.findOrCreate(subjectA), SubjectDao.findOrCreate(subjectB)));
@@ -67,12 +71,16 @@ class ConflictSolverTest {
     Views.refreshData();
     assertTrue(Views.conflicts.get(slotA.id()) == null
         || Views.conflicts.get(slotA.id()).isEmpty(), "clash should be gone");
+    assertTrue(Views.conflicts.get(slotB.id()) == null
+        || Views.conflicts.get(slotB.id()).isEmpty(), "moved class should be clean");
     // The clashing classes no longer share a time cell.
     List<Slot> after = TimetableDao.slots(null);
     Slot afterA = after.stream().filter(s -> s.id() == slotA.id()).findFirst().orElseThrow();
     Slot afterB = after.stream().filter(s -> s.id() == slotB.id()).findFirst().orElseThrow();
     assertTrue(afterA.day() != afterB.day() || afterA.period() != afterB.period(),
         "the two classes should sit in different cells now");
+    // Both periods of the moved class left together.
+    assertEquals(2, after.stream().filter(s -> s.id() == slotB.id()).count());
   }
 
   @Test
@@ -82,7 +90,7 @@ class ConflictSolverTest {
     gamma.setMaxHoursPerWeek(1);
     TeacherDao.upsert(gamma, List.of(SubjectDao.findOrCreate(subject)), List.of());
     Slot first = save(0, subject, "Solver Gamma");
-    save(1, subject, "Solver Gamma"); // exceeds max hours of 1
+    save(2, subject, "Solver Gamma"); // 2 sessions = 4 periods, way over max hours of 1
 
     Views.refreshData();
     List<String> reasons = Views.conflicts.get(first.id());

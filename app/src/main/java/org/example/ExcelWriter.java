@@ -1,10 +1,7 @@
 package org.example;
 
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-import java.io.FileOutputStream;
+import java.io.File;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -13,34 +10,25 @@ import java.util.List;
  */
 public final class ExcelWriter {
 
-  public static void export(java.io.File file, List<Slot> slots, String title) throws Exception {
-    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-      Sheet sheet = workbook.createSheet("Timetable");
+  public static void export(File file, List<Slot> slots, String title)
+      throws Exception {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Period", "Time", "Mon", "Tue", "Wed", "Thu", "Fri"));
 
-      Row header = sheet.createRow(0);
-      String[] heads = { "Period", "Time", "Mon", "Tue", "Wed", "Thu", "Fri" };
-      for (int i = 0; i < heads.length; i++) {
-        header.createCell(i).setCellValue(heads[i]);
+    for (int period = 0; period < Palette.PERIODS; period++) {
+      String[] row = new String[7];
+      row[0] = "P" + (period + 1);
+      row[1] = Palette.periodTime(period);
+      for (int day = 0; day < Palette.DAYS; day++) {
+        String text = cellText(slots, day, period);
+        row[day + 2] = text.isEmpty() ? "" : text;
       }
-
-      for (int period = 0; period < Palette.PERIODS; period++) {
-        Row row = sheet.createRow(period + 1);
-        row.createCell(0).setCellValue("P" + (period + 1));
-        row.createCell(1).setCellValue(Palette.periodTime(period));
-        for (int day = 0; day < Palette.DAYS; day++) {
-          String text = cellText(slots, day, period);
-          if (!text.isEmpty()) {
-            row.createCell(day + 2).setCellValue(text);
-          }
-        }
-      }
-      for (int i = 0; i < 7; i++) {
-        sheet.autoSizeColumn(i);
-      }
-      try (FileOutputStream out = new FileOutputStream(file)) {
-        workbook.write(out);
-      }
+      rows.add(List.of(row));
     }
+
+    LinkedHashMap<String, List<List<String>>> sheets = new LinkedHashMap<>();
+    sheets.put("Timetable", rows);
+    Xlsx.write(file, sheets);
   }
 
   /** "Subject (Teacher)\nGrade · Room" per occupied cell; never empty string only. */

@@ -26,6 +26,20 @@ public final class Palette {
   public static final int DAYS = 5;
   public static final int PERIODS = 8;
 
+  /** Every class is delivered as a dual session covering two consecutive periods. */
+  public static final int[] SESSION_STARTS = { 0, 2, 4, 6 };
+  public static final String[] SESSION_LABELS = { "Periods 1-2", "Periods 3-4", "Periods 5-6", "Periods 7-8" };
+
+  /** First period of the dual session containing {@code period}. */
+  public static int sessionStart(int period) {
+    return period - period % 2;
+  }
+
+  /** Human label of the dual session starting at 0-based {@code start}. */
+  public static String sessionLabel(int start) {
+    return SESSION_LABELS[Math.max(0, Math.min(3, start / 2))];
+  }
+
   // Static timetable: 45-minute periods starting at 09:00 with fixed breaks.
   private static final int PERIOD_LENGTH_MINUTES = 45;
   private static final int[] BREAK_MINUTES_AFTER = { 5, 15, 5, 25, 5, 5, 5 };

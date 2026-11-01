@@ -34,6 +34,31 @@ public final class TimeSuggester {
     return free;
   }
 
+  /**
+   * Conflict-free <em>sessions</em> (dual placements) as {@code [day, startPeriod]}
+   * pairs with an even start: the whole two-period block must pass
+   * {@link #isFree}. Slots of the session being moved share its id, so
+   * {@code excludeSlotId}, when positive, frees both of its current periods.
+   */
+  public static List<int[]> findFreeSessions(String subjectName, String teacherName,
+      List<Slot> slots, List<Student> students, List<Teacher> teachers, int excludeSlotId) {
+    List<Slot> considered = excludeSlotId > 0
+        ? slots.stream().filter(s -> s.id() != excludeSlotId).toList()
+        : slots;
+    Teacher teacher = teacherByName(teachers, teacherName);
+    List<Student> roster = studentsOfSubject(students, subjectName);
+    List<int[]> free = new ArrayList<>();
+    for (int day = 0; day < Palette.DAYS; day++) {
+      for (int start : Palette.SESSION_STARTS) {
+        if (isFree(day, start, subjectName, teacher, roster, considered)
+            && isFree(day, start + 1, subjectName, teacher, roster, considered)) {
+          free.add(new int[] { day, start });
+        }
+      }
+    }
+    return free;
+  }
+
   /** True if placing the class at (day, period) would create no conflict. */
   static boolean isFree(int day, int period, String subjectName, Teacher teacher,
       List<Student> roster, List<Slot> slots) {

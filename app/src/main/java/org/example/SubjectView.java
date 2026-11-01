@@ -21,8 +21,10 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -91,7 +93,7 @@ public class SubjectView extends JPanel {
     if (expanded.contains(name)) {
       gbc.gridy++;
       gbc.insets = new Insets(6, 18, 0, 8);
-      wrap.add(accordion(name, teachers, students, slots), gbc);
+      wrap.add(accordion(subject, teachers, students, slots), gbc);
     }
     return wrap;
   }
@@ -124,12 +126,25 @@ public class SubjectView extends JPanel {
     Color bg = Palette.windowBackground(panel);
     Color[] texts = Palette.textColors(bg);
 
+    panel.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mousePressed(MouseEvent e) {
+        if (javax.swing.SwingUtilities.isRightMouseButton(e)) {
+          showSubjectMenu(panel, name, e.getX(), e.getY());
+        }
+      }
+    });
+
     JPanel nameSide = new JPanel(new BorderLayout());
     nameSide.setOpaque(false);
     nameSide.add(Palette.label(name, 14, texts[0], Font.BOLD), BorderLayout.CENTER);
     nameSide.addMouseListener(new MouseAdapter() {
       @Override
       public void mousePressed(MouseEvent e) {
+        if (javax.swing.SwingUtilities.isRightMouseButton(e)) {
+          showSubjectMenu(nameSide, name, e.getX(), e.getY());
+          return;
+        }
         toggle(name);
       }
     });
@@ -142,6 +157,62 @@ public class SubjectView extends JPanel {
     return panel;
   }
 
+  /** Right-click menu on a subject row: rename or delete the subject. */
+  private static void showSubjectMenu(JComponent source, String name, int x, int y) {
+    JPopupMenu menu = new JPopupMenu();
+    JMenuItem edit = new JMenuItem("Edit...");
+    edit.addActionListener(ev -> renameDialog(name));
+    menu.add(edit);
+    JMenuItem delete = new JMenuItem("Delete...");
+    delete.addActionListener(ev -> deleteDialog(name));
+    menu.add(delete);
+    menu.show(source, x, y);
+  }
+
+  private static void renameDialog(String oldName) {
+    String input = (String) JOptionPane.showInputDialog(null, "Rename subject:", "Edit subject — "
+            + oldName, JOptionPane.PLAIN_MESSAGE, null, null, oldName);
+    if (input == null) {
+      return;
+    }
+    String newName = input.trim();
+    if (newName.isBlank() || newName.equals(oldName)) {
+      return;
+    }
+    try {
+      SubjectDao.rename(oldName, newName);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      Palette.error(null, "Failed to rename: " + ex.getMessage(), "Rename Error");
+      return;
+    }
+    boolean wasExpanded = expanded.contains(oldName);
+    expanded.remove(oldName);
+    if (wasExpanded) {
+      expanded.add(newName);
+    }
+    Views.refresh();
+  }
+
+  private static void deleteDialog(String name) {
+    int ok = JOptionPane.showConfirmDialog(null,
+        "Delete " + name + "? The students and teachers taking part in it,\n"
+            + "and its scheduled classes, will be removed with it.",
+        "Delete " + name, JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+    if (ok != JOptionPane.OK_OPTION) {
+      return;
+    }
+    try {
+      SubjectDao.delete(name);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      Palette.error(null, "Failed to delete: " + ex.getMessage(), "Delete Error");
+      return;
+    }
+    expanded.remove(name);
+    Views.refresh();
+  }
+
   private static void toggle(String name) {
     if (expanded.contains(name)) {
       expanded.remove(name);
@@ -151,15 +222,35 @@ public class SubjectView extends JPanel {
     Views.shell.rerenderCurrent();
   }
 
-  /** Expanded part: Teachers and Students sections of visual rows. */
-  private static JComponent accordion(String name, List<Teacher> teachers, List<Student> students,
-      List<Slot> slots) {
+  /** Expanded part: Level, Teachers, Students and Sessions sections. */
+  private static JComponent accordion(Subject subject, List<Teacher> teachers,
+      List<Student> students, List<Slot> slots) {
+    String name = subject.getName();
     JPanel panel = new JPanel();
     panel.setOpaque(false);
     panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
     panel.setBorder(BorderFactory.createEmptyBorder(0, 12, 4, 4));
     Color bg = Palette.windowBackground(panel);
     Color[] texts = Palette.textColors(bg);
+
+    panel.add(Palette.label("Level — HL subjects hold 6 periods a week (3 sessions), SL hold 4 (2)",
+        12, texts[2], Font.BOLD));
+    JComboBox<String> levelBox = new JComboBox<>(new String[] { Subject.SL, Subject.HL });
+    levelBox.setSelectedItem(subject.getLevel());
+    levelBox.addActionListener(e -> {
+      String level = (String) levelBox.getSelectedItem();
+      try {
+        SubjectDao.setLevel(name, level);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+        Palette.error(panel, "Failed to set level: " + ex.getMessage(), "Error");
+        return;
+      }
+      Views.refresh();
+    });
+    levelBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+    panel.add(levelBox);
+    panel.add(Box.createVerticalStrut(8));
 
     panel.add(Palette.label("Teachers", 12, texts[2], Font.BOLD));
     if (teachers.isEmpty()) {
@@ -181,13 +272,27 @@ public class SubjectView extends JPanel {
       panel.add(Box.createVerticalStrut(4));
     }
     panel.add(Box.createVerticalStrut(8));
-    panel.add(Palette.label("Periods", 12, texts[2], Font.BOLD));
-    if (slots.isEmpty()) {
-      panel.add(Palette.label("Not scheduled yet.", 11, texts[3], Font.PLAIN));
-    }
+    // Sessions held vs the DP rule: one session = two consecutive periods.
+    long held = slots.stream().map(Slot::id).distinct().count();
+    int target = subject.requiredSessions();
+    String count = "Sessions: " + held + " / " + target
+        + (held == target ? "" : held < target ? " — under the " + subject.getLevel() + " rule"
+            : " — over the " + subject.getLevel() + " rule");
+    panel.add(Palette.label(count, 12, held == target ? texts[2] : Palette.conflictText(bg), Font.BOLD));
+    panel.add(Box.createVerticalStrut(4));
+    // One row per session (both periods share the session id).
+    Set<Integer> shownSessions = new HashSet<>();
+    boolean anySession = false;
     for (Slot slot : slots) {
+      if (!shownSessions.add(slot.id())) {
+        continue;
+      }
+      anySession = true;
       panel.add(slotRow(slot));
       panel.add(Box.createVerticalStrut(4));
+    }
+    if (!anySession) {
+      panel.add(Palette.label("Not scheduled yet.", 11, texts[3], Font.PLAIN));
     }
     return panel;
   }
@@ -244,9 +349,10 @@ public class SubjectView extends JPanel {
     return row;
   }
 
-  /** One scheduled period of this subject: click opens the class details. */
+  /** One scheduled session of this subject: click opens the class details. */
   private static JComponent slotRow(Slot slot) {
-    String label = Palette.dayNames()[slot.day()] + " · " + slot.periodLabel()
+    String label = Palette.dayNames()[slot.day()] + " · "
+        + Palette.sessionLabel(TimetableDao.sessionStart(slot.period()))
         + (slot.grade().isEmpty() ? "" : " · " + slot.grade())
         + (slot.room().isEmpty() ? "" : " · " + slot.room());
     JPanel row = new JPanel(new BorderLayout()) {

@@ -21,13 +21,6 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    // This dependency is used by the application.
-    implementation(libs.guava)
-
-    // Apache POI for spreadsheet reading
-    implementation(libs.poi)
-    implementation(libs.poi.ooxml)
-
     // Embedded MariaDB (MySQL-compatible) server + bundled linux binaries + JDBC client
     implementation(libs.mariadb4j.core)
     runtimeOnly(libs.mariadb4j.db.linux64)
@@ -35,7 +28,6 @@ dependencies {
 
     // Silence MariaDB4j's startup logging chatter
     runtimeOnly("org.slf4j:slf4j-nop:2.0.17")
-    runtimeOnly("org.apache.logging.log4j:log4j-core:2.23.1")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

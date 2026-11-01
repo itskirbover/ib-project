@@ -36,7 +36,8 @@ class ConflictDetectorTest {
     student.addCourse(new Subject("Biology"));
     Map<Integer, List<String>> conflicts = ConflictDetector.detect(
         List.of(spanish, biology), List.of(student), List.of());
-    assertTrue(conflicts.isEmpty());
+    assertTrue(conflicts.values().stream().flatMap(List::stream)
+        .noneMatch(r -> r.contains("has two classes")));
   }
 
   @Test
@@ -59,7 +60,8 @@ class ConflictDetectorTest {
     Map<Integer, List<String>> conflicts = ConflictDetector.detect(
         List.of(occupied, free), List.of(), List.of(teacher));
     assertTrue(conflicts.get(1).stream().anyMatch(r -> r.contains("no-time slot")));
-    assertTrue(!conflicts.containsKey(2));
+    assertTrue(!conflicts.containsKey(2) || conflicts.get(2).stream()
+        .noneMatch(r -> r.contains("no-time")));
   }
 
   @Test
@@ -73,5 +75,50 @@ class ConflictDetectorTest {
         List.of(first, second, third), List.of(), List.of(teacher));
     assertTrue(conflicts.get(1).stream().anyMatch(r -> r.contains("over the limit")));
     assertTrue(conflicts.get(3).stream().anyMatch(r -> r.contains("over the limit")));
+  }
+
+  private static List<Slot> session(int id, int day, int start, String subject, String teacher) {
+    // a dual session expands into two period slots sharing the id
+    return List.of(new Slot(id, day, start, subject, teacher, "", ""),
+        new Slot(id, day, start + 1, subject, teacher, "", ""));
+  }
+
+  @Test
+  void weeklyCountRuleFlagsUnderScheduling() {
+    // HL needs 3 sessions (6 periods); only 2 exist.
+    List<Slot> slots = new java.util.ArrayList<>(session(1, 0, 0, "Biology HL", "T"));
+    slots.addAll(session(2, 1, 0, "Biology HL", "T"));
+    Map<Integer, List<String>> conflicts = ConflictDetector.detect(
+        slots, List.of(), List.of(), Map.of("Biology HL", "HL"));
+    String reason = conflicts.get(1).stream().filter(r -> r.contains("Biology HL"))
+        .findFirst().orElse("");
+    assertTrue(reason.contains("2 of 3 sessions"), reason);
+    assertTrue(reason.contains("6 periods"), reason);
+    assertTrue(conflicts.containsKey(2));
+  }
+
+  @Test
+  void weeklyCountRuleFlagsOverScheduling() {
+    // SL needs 2 sessions (4 periods); 3 exist.
+    List<Slot> slots = new java.util.ArrayList<>();
+    slots.addAll(session(1, 0, 0, "Biology SL", "T"));
+    slots.addAll(session(2, 1, 0, "Biology SL", "T"));
+    slots.addAll(session(3, 2, 0, "Biology SL", "T"));
+    Map<Integer, List<String>> conflicts = ConflictDetector.detect(
+        slots, List.of(), List.of(), Map.of("Biology SL", "SL"));
+    String reason = conflicts.get(1).stream().filter(r -> r.contains("Biology SL"))
+        .findFirst().orElse("");
+    assertTrue(reason.contains("3 of 2 sessions"), reason);
+  }
+
+  @Test
+  void weeklyCountSatisfiedIsConflictFree() {
+    List<Slot> slots = new java.util.ArrayList<>();
+    slots.addAll(session(1, 0, 0, "Biology HL", "T"));
+    slots.addAll(session(2, 1, 0, "Biology HL", "T"));
+    slots.addAll(session(3, 2, 0, "Biology HL", "T"));
+    Map<Integer, List<String>> conflicts = ConflictDetector.detect(
+        slots, List.of(), List.of(), Map.of("Biology HL", "HL"));
+    assertTrue(conflicts.isEmpty());
   }
 }

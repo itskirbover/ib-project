@@ -14,6 +14,7 @@ public final class Views {
   static MainShell shell;
   static List<Student> students = new ArrayList<>();
   static List<Teacher> teachers = new ArrayList<>();
+  static List<Subject> subjects = new ArrayList<>();
   static List<Slot> slots = new ArrayList<>();
   static Map<Integer, List<String>> conflicts = new HashMap<>();
 
@@ -36,12 +37,27 @@ public final class Views {
     try {
       students = StudentDao.all();
       teachers = TeacherDao.all();
+      subjects = SubjectDao.all();
       slots = TimetableDao.slots(null);
-      conflicts = ConflictDetector.detect(slots, students, teachers);
+      conflicts = ConflictDetector.detect(slots, students, teachers, subjectLevels());
       Registry.load();
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  /** Subject name -> HL/SL level map used by the conflict rules. */
+  static Map<String, String> subjectLevels() {
+    Map<String, String> levels = new HashMap<>();
+    for (Subject subject : subjects) {
+      levels.put(subject.getName(), subject.getLevel());
+    }
+    return levels;
+  }
+
+  /** The stored level of a subject; unknown or custom subjects count as SL. */
+  static boolean isHl(String subjectName) {
+    return "HL".equals(subjectLevels().get(subjectName));
   }
 
   static Teacher teacherByName(String name) {

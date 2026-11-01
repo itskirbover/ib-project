@@ -130,7 +130,7 @@ public class TimetableView extends JPanel {
     AaCombo.attachAddListener(subjectBox, AaCombo.CatalogKind.SUBJECT);
     AaCombo.attachAddListener(teacherBox, AaCombo.CatalogKind.TEACHER);
 
-    // Day/period default to the clicked cell, but can be changed or suggested.
+    // Day/session default to the clicked cell, but can be changed or suggested.
     JComboBox<String> dayBox = AaCombo.comboBox(List.of(Palette.dayNames()),
         Palette.dayNames()[day]);
     JComboBox<String> periodBox = ClassView.periodBox(period);
@@ -144,8 +144,8 @@ public class TimetableView extends JPanel {
 
     Component top = source == null ? null : SwingUtilities.getRoot(source);
     int result = JOptionPane.showConfirmDialog(top, panel,
-        "Add class — " + Palette.periodTime(period), JOptionPane.OK_CANCEL_OPTION,
-        JOptionPane.PLAIN_MESSAGE);
+        "Add class — " + Palette.sessionLabel(TimetableDao.sessionStart(period)),
+        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
     if (result != JOptionPane.OK_OPTION) {
       return;
     }
@@ -157,9 +157,11 @@ public class TimetableView extends JPanel {
       return;
     }
     int pickedDay = dayBox.getSelectedIndex();
-    int pickedPeriod = periodBox.getSelectedIndex();
-    if (pickedDay < 0 || pickedPeriod < 0) {
-      JOptionPane.showMessageDialog(top, "Day and Period are required.", "Missing data",
+    // The combo lists the four dual sessions; the picked value is the pair start.
+    int pickedPeriod = periodBox.getSelectedIndex() >= 0
+        ? Palette.SESSION_STARTS[periodBox.getSelectedIndex()] : -1;
+    if (pickedDay < 0 || periodBox.getSelectedIndex() < 0) {
+      JOptionPane.showMessageDialog(top, "Day and Session are required.", "Missing data",
           JOptionPane.WARNING_MESSAGE);
       return;
     }

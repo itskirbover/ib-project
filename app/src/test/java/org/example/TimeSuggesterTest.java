@@ -114,4 +114,45 @@ class TimeSuggesterTest {
     List<int[]> blocked = free("Spanish", "Nata", List.of(own), List.of(), List.of(teacher));
     assertTrue(blocked.isEmpty());
   }
+
+  /* ---- dual session suggestions ---- */
+
+  @Test
+  void freeSessionsOfferEveryAlignedPairOnEmptyTimetable() {
+    List<int[]> candidates = TimeSuggester.findFreeSessions("Biology", "Nata",
+        List.of(), List.of(), List.of(), 0);
+    assertEquals(Palette.DAYS * Palette.SESSION_STARTS.length, candidates.size());
+    assertEquals(0, candidates.get(0)[0]);
+    assertEquals(0, candidates.get(0)[1]);
+    for (int[] candidate : candidates) {
+      assertEquals(0, candidate[1] % 2, "session starts are even");
+    }
+  }
+
+  @Test
+  void sessionNeedsBothHalvesFree() {
+    Teacher teacher = new Teacher("Nata");
+    teacher.installBlocks(List.of(new int[] { 1, 5 })); // blocks period 6 (pair 5-6's second half)
+    Slot busy = slot(1, 1, 0, "Spanish", "Nata"); // day 1 period 1 taught by Nata herself
+    List<int[]> candidates = TimeSuggester.findFreeSessions("Biology", "Nata",
+        List.of(busy), List.of(), List.of(teacher), 0);
+    assertTrue(at(candidates, 1, 0) < 0, "the pair 1-2 has a busy first half");
+    assertTrue(at(candidates, 1, 2) >= 0, "the next pair stays free");
+    assertTrue(at(candidates, 1, 4) < 0, "the pair 5-6 has a blocked second half");
+  }
+
+  @Test
+  void movingOwnSessionFreesItsTwoPeriods() {
+    Teacher teacher = new Teacher("Nata");
+    teacher.setMaxHoursPerWeek(2);
+    Slot start = slot(7, 0, 0, "Biology SL", "Nata");
+    Slot next = slot(7, 0, 1, "Biology SL", "Nata"); // same session, same id
+    List<int[]> movable = TimeSuggester.findFreeSessions("Biology SL", "Nata",
+        List.of(start, next), List.of(), List.of(teacher), 7);
+    assertTrue(at(movable, 0, 2) >= 0);
+    // Without the exclusion the session's two periods already fill the limit.
+    List<int[]> frozen = TimeSuggester.findFreeSessions("Biology SL", "Nata",
+        List.of(start, next), List.of(), List.of(teacher), 0);
+    assertTrue(frozen.isEmpty());
+  }
 }

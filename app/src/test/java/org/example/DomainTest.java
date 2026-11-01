@@ -58,6 +58,23 @@ class DomainTest {
     }
 
     @Test
+    void levelControlsWeeklyPeriodTargets() {
+        Subject hl = new Subject("Biology HL");
+        hl.setLevel(Subject.HL);
+        assertEquals(6, hl.requiredPeriods());
+        assertEquals(3, hl.requiredSessions());
+
+        Subject sl = new Subject("Biology SL");
+        assertEquals(4, sl.requiredPeriods());
+        assertEquals(2, sl.requiredSessions());
+
+        Subject unknown = new Subject("Biology");
+        unknown.setLevel("XL");
+        assertEquals(Subject.SL, unknown.getLevel());
+        assertEquals(4, unknown.requiredPeriods());
+    }
+
+    @Test
     void scheduleIsRoundTripped() throws Exception {
         // persist -> parse -> same values
         java.io.File file = java.nio.file.Files.createTempFile("sched", ".xlsx").toFile();
